@@ -9,6 +9,8 @@
 #include "ns3/point-to-point-module.h"
 #include "ns3/v4ping-helper.h"
 #include "ns3/yans-wifi-helper.h"
+#include "ns3/energy-module.h"
+#include "ns3/wifi-radio-energy-model-helper.h"
 
 using namespace ns3;
 
@@ -20,7 +22,7 @@ int main(int argc, char** argv) {
     NetDeviceContainer devices;
     Ipv4InterfaceContainer interfaces;
 
-    uint32_t size = 4;
+    uint32_t size = 10;
 
     // Configure
     SeedManager::SetSeed(12345);
@@ -62,6 +64,13 @@ int main(int argc, char** argv) {
     std::cout << "  Installing wifi on nodes...\n";
     devices = wifi.Install (wifiPhy, wifiMac, nodes);
 
+    // Adding energy framework
+    BasicEnergySourceHelper basicSourceHelper;
+    basicSourceHelper.Set ("BasicEnergySourceInitialEnergyJ", DoubleValue (10000));
+    EnergySourceContainer sources = basicSourceHelper.Install (nodes);
+    WifiRadioEnergyModelHelper radioEnergyHelper;
+    radioEnergyHelper.Set ("TxCurrentA", DoubleValue (0.0174));
+    DeviceEnergyModelContainer deviceModels = radioEnergyHelper.Install (devices, sources);
 
     // Installing internet stack
     std::cout << "Installing internet stack...\n";
@@ -80,16 +89,24 @@ int main(int argc, char** argv) {
 
     // Install applications
     std::cout << "Installing applications...\n";
-    V4PingHelper ping (interfaces.GetAddress (size - 1));
+    V4PingHelper ping (interfaces.GetAddress (2));
     ping.SetAttribute ("Verbose", BooleanValue (true));
-    ping.SetAttribute ("Interval", TimeValue(Seconds(1)));
+    // ping.SetAttribute ("Interval", TimeValue(Seconds(1)));
 
     ApplicationContainer p = ping.Install (nodes.Get (0));
     p.Start (Seconds (0));
-    p.Stop (Seconds (4) - Seconds (0.001));
+    p.Stop (Seconds (1500) - Seconds (0.001));
 
-    Simulator::Stop (Seconds (5));
+    Simulator::Stop (Seconds (1500));
     Simulator::Run ();
+
+    for (DeviceEnergyModelContainer::Iterator iter = deviceModels.Begin (); iter != deviceModels.End (); iter ++)
+    {
+        double energyConsumed = (*iter)->GetTotalEnergyConsumption ();
+        NS_LOG_UNCOND ("End of simulation (" << Simulator::Now ().GetSeconds ()
+                                             << "s) Total energy consumed by radio = " << energyConsumed << "J");
+    }
+
     Simulator::Destroy ();
 
     return 0;
