@@ -21,20 +21,11 @@ int main(int argc, char** argv) {
     Ipv4InterfaceContainer interfaces;
 
     uint32_t size = 4;
-    double step = 50;
-    double totalTime = 100;
 
     // Configure
     SeedManager::SetSeed(12345);
-    CommandLine cmd;
-    cmd.AddValue ("size", "Number of nodes.", size);
-    cmd.AddValue ("time", "Simulation time, s.", totalTime);
-    cmd.AddValue ("step", "Grid step, m", step);
-
-    cmd.Parse (argc, argv);
 
     // Creationg of nodes
-    std::cout << "Creating " << (unsigned)size << " nodes " << step << " m apart....\n";
     nodes.Create (size);
 
     // Name nodes
@@ -51,9 +42,9 @@ int main(int argc, char** argv) {
     mobility.SetPositionAllocator ("ns3::GridPositionAllocator",
                                    "MinX", DoubleValue (0.0),
                                    "MinY", DoubleValue (0.0),
-                                   "DeltaX", DoubleValue (step),
-                                   "DeltaY", DoubleValue (0),
-                                   "GridWidth", UintegerValue (size),
+                                   "DeltaX", DoubleValue (51),
+                                   "DeltaY", DoubleValue (51),
+                                   "GridWidth", UintegerValue(2),
                                    "LayoutType", StringValue ("RowFirst"));
     mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
     mobility.Install (nodes);
@@ -71,6 +62,7 @@ int main(int argc, char** argv) {
     std::cout << "  Installing wifi on nodes...\n";
     devices = wifi.Install (wifiPhy, wifiMac, nodes);
 
+
     // Installing internet stack
     std::cout << "Installing internet stack...\n";
     AodvHelper aodv;
@@ -82,18 +74,21 @@ int main(int argc, char** argv) {
     address.SetBase ("10.0.0.0", "255.0.0.0");
     interfaces = address.Assign (devices);
 
+    // Print routes
+    Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("aodv.routes", std::ios::out);
+    aodv.PrintRoutingTableAllAt (Seconds (8), routingStream);
+
     // Install applications
     std::cout << "Installing applications...\n";
     V4PingHelper ping (interfaces.GetAddress (size - 1));
     ping.SetAttribute ("Verbose", BooleanValue (true));
+    ping.SetAttribute ("Interval", TimeValue(Seconds(1)));
 
     ApplicationContainer p = ping.Install (nodes.Get (0));
     p.Start (Seconds (0));
-    p.Stop (Seconds (totalTime) - Seconds (0.001));
+    p.Stop (Seconds (4) - Seconds (0.001));
 
-    std::cout << "Starting simulation for " << totalTime << " s ...\n";
-
-    Simulator::Stop (Seconds (totalTime));
+    Simulator::Stop (Seconds (5));
     Simulator::Run ();
     Simulator::Destroy ();
 
