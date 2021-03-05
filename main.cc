@@ -16,22 +16,32 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("WsnEnergyDrainAttacks");
 
+
+void PrintNodePosition(ns3::Ptr<ns3::Node> ptr_node, int node_id) {
+    Ptr<MobilityModel> mob = ptr_node->GetObject<MobilityModel>();
+    double x = mob->GetPosition().x;
+    double y = mob->GetPosition().y;
+
+    printf("Node %d: x=%f, y=%f\n", node_id, x, y);
+}
+
+
 int main(int argc, char** argv) {
 
     NodeContainer nodes;
     NetDeviceContainer devices;
     Ipv4InterfaceContainer interfaces;
 
-    uint32_t size = 10;
+    uint32_t nodes_quantity = 10;
 
     // Configure
     SeedManager::SetSeed(12345);
 
     // Creationg of nodes
-    nodes.Create (size);
+    nodes.Create (nodes_quantity);
 
     // Name nodes
-    for (uint32_t i = 0; i < size; ++i)
+    for (uint32_t i = 0; i < nodes_quantity; ++i)
     {
         std::ostringstream os;
         os << "node-" << i;
@@ -51,6 +61,10 @@ int main(int argc, char** argv) {
     mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
     mobility.Install (nodes);
 
+    for (uint32_t i=0; i < nodes_quantity; i++) {
+        PrintNodePosition(nodes.Get(i), i);
+    }
+
     // Create devices
     std::cout << "Creating devices...\n";
     WifiMacHelper wifiMac;
@@ -64,12 +78,13 @@ int main(int argc, char** argv) {
     std::cout << "  Installing wifi on nodes...\n";
     devices = wifi.Install (wifiPhy, wifiMac, nodes);
 
+    wifiPhy.EnablePcapAll (std::string ("aodv"));
+
     // Adding energy framework
     BasicEnergySourceHelper basicSourceHelper;
-    basicSourceHelper.Set ("BasicEnergySourceInitialEnergyJ", DoubleValue (10000));
+    basicSourceHelper.Set ("BasicEnergySourceInitialEnergyJ", DoubleValue (1000));
     EnergySourceContainer sources = basicSourceHelper.Install (nodes);
     WifiRadioEnergyModelHelper radioEnergyHelper;
-    radioEnergyHelper.Set ("TxCurrentA", DoubleValue (0.0174));
     DeviceEnergyModelContainer deviceModels = radioEnergyHelper.Install (devices, sources);
 
     // Installing internet stack
@@ -89,15 +104,15 @@ int main(int argc, char** argv) {
 
     // Install applications
     std::cout << "Installing applications...\n";
-    V4PingHelper ping (interfaces.GetAddress (2));
-    ping.SetAttribute ("Verbose", BooleanValue (true));
+    V4PingHelper ping (interfaces.GetAddress (1));
+    // ping.SetAttribute ("Verbose", BooleanValue (true));
     // ping.SetAttribute ("Interval", TimeValue(Seconds(1)));
 
     ApplicationContainer p = ping.Install (nodes.Get (0));
     p.Start (Seconds (0));
-    p.Stop (Seconds (1500) - Seconds (0.001));
+    p.Stop (Seconds (200) - Seconds (0.001));
 
-    Simulator::Stop (Seconds (1500));
+    Simulator::Stop (Seconds (200));
     Simulator::Run ();
 
     for (DeviceEnergyModelContainer::Iterator iter = deviceModels.Begin (); iter != deviceModels.End (); iter ++)
