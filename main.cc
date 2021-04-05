@@ -29,16 +29,21 @@ void PrintNodePosition(ns3::Ptr<ns3::Node> ptr_node, int node_id) {
 int main(int argc, char** argv) {
 
     NodeContainer nodes;
+    NodeContainer malicious_nodes;
     NetDeviceContainer devices;
+    NetDeviceContainer devices_malicious;
     Ipv4InterfaceContainer interfaces;
+    Ipv4InterfaceContainer malicious_interfaces;
 
     uint32_t nodes_quantity = 10;
+    uint32_t malicious_nodes_quantity = 1;
 
     // Configure
     SeedManager::SetSeed(12345);
 
     // Creationg of nodes
     nodes.Create (nodes_quantity);
+    malicious_nodes.Create(malicious_nodes_quantity);
 
     // Name nodes
     for (uint32_t i = 0; i < nodes_quantity; ++i)
@@ -46,6 +51,11 @@ int main(int argc, char** argv) {
         std::ostringstream os;
         os << "node-" << i;
         Names::Add (os.str (), nodes.Get (i));
+    }
+    for (uint32_t i = 0; i < malicious_nodes_quantity; ++i) {
+        std::ostringstream os;
+        os << "malicious-node-" << i;
+        Names::Add (os.str (), malicious_nodes.Get (i));
     }
 
     // Create static grid
@@ -60,12 +70,17 @@ int main(int argc, char** argv) {
                                    "LayoutType", StringValue ("RowFirst"));
     mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
     mobility.Install (nodes);
+    mobility.Install (malicious_nodes);
 
+    std::cout << "\nNormal nodes positions:\n";
     for (uint32_t i=0; i < nodes_quantity; i++) {
         PrintNodePosition(nodes.Get(i), i);
     }
+    std::cout << "\nMalicious nodes positions:\n";
+    for (uint32_t i=0; i < malicious_nodes_quantity; i++) {
+        PrintNodePosition(malicious_nodes.Get(i), i);
+    }
 
-    // Create devices
     std::cout << "Creating devices...\n";
     WifiMacHelper wifiMac;
     wifiMac.SetType ("ns3::AdhocWifiMac");
@@ -73,10 +88,13 @@ int main(int argc, char** argv) {
     YansWifiChannelHelper wifiChannel = YansWifiChannelHelper::Default ();
     wifiPhy.SetChannel (wifiChannel.Create ());
     WifiHelper wifi;
+
     std::cout << "  Setting wifi remote station manager...\n";
     wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager", "DataMode", StringValue ("OfdmRate6Mbps"), "RtsCtsThreshold", UintegerValue (0));
+
     std::cout << "  Installing wifi on nodes...\n";
     devices = wifi.Install (wifiPhy, wifiMac, nodes);
+    devices_malicious = wifi.Install (wifiPhy, wifiMac, malicious_nodes);
 
     wifiPhy.EnablePcapAll (std::string ("aodv"));
 
@@ -87,32 +105,44 @@ int main(int argc, char** argv) {
     WifiRadioEnergyModelHelper radioEnergyHelper;
     DeviceEnergyModelContainer deviceModels = radioEnergyHelper.Install (devices, sources);
 
-    // Installing internet stack
-    std::cout << "Installing internet stack...\n";
+    std::cout << "Configuring AODV...\n";
+
     AodvHelper aodv;
-    // you can configure AODV attributes here using aodv.Set(name, value)
+
+    AodvHelper aodv_hello_flood;
+    aodv_hello_flood.Set(std::string("HelloInterval"), ns3::TimeValue(ns3::MicroSeconds(10)));
+    aodv_hello_flood.Set(std::string("EnableHello"), ns3::BooleanValue(true));
+
+    std::cout << "Installing internet stack...\n";
+
     InternetStackHelper stack;
     stack.SetRoutingHelper (aodv); // has effect on the next Install ()
     stack.Install (nodes);
+
+    InternetStackHelper malicious_stack;
+    malicious_stack.SetRoutingHelper (aodv_hello_flood);
+    malicious_stack.Install(malicious_nodes);
+
     Ipv4AddressHelper address;
     address.SetBase ("10.0.0.0", "255.0.0.0");
     interfaces = address.Assign (devices);
+    malicious_interfaces = address.Assign (devices_malicious);
 
     // Print routes
     Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("aodv.routes", std::ios::out);
     aodv.PrintRoutingTableAllAt (Seconds (8), routingStream);
 
     // Install applications
-    std::cout << "Installing applications...\n";
-    V4PingHelper ping (interfaces.GetAddress (1));
+//    std::cout << "Installing applications...\n";
+//    V4PingHelper ping (interfaces.GetAddress (1));
     // ping.SetAttribute ("Verbose", BooleanValue (true));
     // ping.SetAttribute ("Interval", TimeValue(Seconds(1)));
 
-    ApplicationContainer p = ping.Install (nodes.Get (0));
-    p.Start (Seconds (0));
-    p.Stop (Seconds (200) - Seconds (0.001));
+//    ApplicationContainer p = ping.Install (nodes.Get (0));
+//    p.Start (Seconds (0));
+//    p.Stop (Seconds (200) - Seconds (0.001));
 
-    Simulator::Stop (Seconds (200));
+    Simulator::Stop (Seconds (10));
     Simulator::Run ();
 
     for (DeviceEnergyModelContainer::Iterator iter = deviceModels.Begin (); iter != deviceModels.End (); iter ++)
