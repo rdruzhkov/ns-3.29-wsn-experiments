@@ -110,13 +110,13 @@ int main(int argc, char** argv) {
     AodvHelper aodv;
 
     AodvHelper aodv_hello_flood;
-    aodv_hello_flood.Set(std::string("HelloInterval"), ns3::TimeValue(ns3::MicroSeconds(10)));
+    aodv_hello_flood.Set(std::string("HelloInterval"), ns3::TimeValue(ns3::MicroSeconds(1)));
     aodv_hello_flood.Set(std::string("EnableHello"), ns3::BooleanValue(true));
 
     std::cout << "Installing internet stack...\n";
 
     InternetStackHelper stack;
-    stack.SetRoutingHelper (aodv); // has effect on the next Install ()
+    stack.SetRoutingHelper (aodv);
     stack.Install (nodes);
 
     InternetStackHelper malicious_stack;
@@ -131,16 +131,6 @@ int main(int argc, char** argv) {
     // Print routes
     Ptr<OutputStreamWrapper> routingStream = Create<OutputStreamWrapper> ("aodv.routes", std::ios::out);
     aodv.PrintRoutingTableAllAt (Seconds (8), routingStream);
-
-    // Install applications
-//    std::cout << "Installing applications...\n";
-//    V4PingHelper ping (interfaces.GetAddress (1));
-    // ping.SetAttribute ("Verbose", BooleanValue (true));
-    // ping.SetAttribute ("Interval", TimeValue(Seconds(1)));
-
-//    ApplicationContainer p = ping.Install (nodes.Get (0));
-//    p.Start (Seconds (0));
-//    p.Stop (Seconds (200) - Seconds (0.001));
 
     Simulator::Stop (Seconds (10));
     Simulator::Run ();
