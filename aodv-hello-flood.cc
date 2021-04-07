@@ -101,16 +101,20 @@ int main(int argc, char** argv) {
     // Adding energy framework
     BasicEnergySourceHelper basicSourceHelper;
     basicSourceHelper.Set ("BasicEnergySourceInitialEnergyJ", DoubleValue (1000));
+
     EnergySourceContainer sources = basicSourceHelper.Install (nodes);
+    EnergySourceContainer malicious_nodes_sources = basicSourceHelper.Install(malicious_nodes);
+
     WifiRadioEnergyModelHelper radioEnergyHelper;
     DeviceEnergyModelContainer deviceModels = radioEnergyHelper.Install (devices, sources);
+    DeviceEnergyModelContainer maliciousDeviceModels = radioEnergyHelper.Install(devices_malicious, malicious_nodes_sources);
 
     std::cout << "Configuring AODV...\n";
 
     AodvHelper aodv;
 
     AodvHelper aodv_hello_flood;
-    aodv_hello_flood.Set(std::string("HelloInterval"), ns3::TimeValue(ns3::MicroSeconds(1)));
+    aodv_hello_flood.Set(std::string("HelloInterval"), ns3::TimeValue(ns3::MicroSeconds(40)));
     aodv_hello_flood.Set(std::string("EnableHello"), ns3::BooleanValue(true));
 
     std::cout << "Installing internet stack...\n";
@@ -135,7 +139,16 @@ int main(int argc, char** argv) {
     Simulator::Stop (Seconds (10));
     Simulator::Run ();
 
+    std::cout << "\nEnergy consumption of common nodes:\n";
     for (DeviceEnergyModelContainer::Iterator iter = deviceModels.Begin (); iter != deviceModels.End (); iter ++)
+    {
+        double energyConsumed = (*iter)->GetTotalEnergyConsumption ();
+        NS_LOG_UNCOND ("End of simulation (" << Simulator::Now ().GetSeconds ()
+                                             << "s) Total energy consumed by radio = " << energyConsumed << "J");
+    }
+
+    std::cout << "\nEnergy consumption of malicious nodes:\n";
+    for (DeviceEnergyModelContainer::Iterator iter = maliciousDeviceModels.Begin (); iter != maliciousDeviceModels.End (); iter ++)
     {
         double energyConsumed = (*iter)->GetTotalEnergyConsumption ();
         NS_LOG_UNCOND ("End of simulation (" << Simulator::Now ().GetSeconds ()
