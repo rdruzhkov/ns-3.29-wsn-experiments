@@ -114,7 +114,8 @@ int main(int argc, char** argv) {
     AodvHelper aodv;
 
     AodvHelper aodv_hello_flood;
-    aodv_hello_flood.Set(std::string("HelloInterval"), ns3::TimeValue(ns3::MicroSeconds(40)));
+    // Variate hello flood interval to simulate attack of different volume
+    aodv_hello_flood.Set(std::string("HelloInterval"), ns3::TimeValue(ns3::Seconds(1)));
     aodv_hello_flood.Set(std::string("EnableHello"), ns3::BooleanValue(true));
 
     std::cout << "Installing internet stack...\n";
