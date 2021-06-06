@@ -25,6 +25,8 @@ void PrintNodePosition(ns3::Ptr<ns3::Node> ptr_node, int node_id) {
 }
 
 int main(int argc, char** argv) {
+  LogComponentEnable("AodvRoutingProtocol", LOG_LEVEL_LOGIC);
+
   NodeContainer nodes;
   NetDeviceContainer devices;
   Ipv4InterfaceContainer interfaces;
