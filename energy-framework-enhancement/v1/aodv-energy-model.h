@@ -7,8 +7,6 @@
 #include "ns3/nstime.h"
 #include "ns3/fatal-error.h"
 
-#include <stack>
-
 enum AodvEnergyModelState {
   IDLE_,
   CALCULATING_,
@@ -66,7 +64,7 @@ public:
 
   Time GetMaximumTimeInState (int state) const;
 
-  void SetAodvEnergyModelState ( AodvEnergyModelState state);
+  void SetAodvEnergyModelState (const AodvEnergyModelState state);
 
 private:
 
@@ -82,7 +80,7 @@ private:
   TracedValue<double> m_totalEnergyConsumption;
 
   AodvEnergyModelState m_currentState;
-  double m_lastUpdateTime;
+  Time m_lastUpdateTime;
 
   uint8_t m_nPendingChangeState; ///< pending state change
 
@@ -93,8 +91,6 @@ private:
   AodvEnergyRechargedCallback m_energyRechargedCallback;
 
   EventId m_switchToOffEvent; ///< switch to off event
-
-  std::stack<AodvEnergyModelState> statesStack;
 };
 
 } // namespace ns3

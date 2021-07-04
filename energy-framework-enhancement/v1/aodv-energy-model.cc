@@ -1,6 +1,4 @@
 
-#include <chrono>
-
 #include "ns3/log.h"
 #include "ns3/simulator.h"
 #include "ns3/pointer.h"
@@ -30,15 +28,15 @@ AodvEnergyModel::GetTypeId ()
 
 AodvEnergyModel::AodvEnergyModel ()
 :  m_source (0),
-   m_idleCurrentA (0.100),
-   m_calculationCurrentA (0.200),
+   m_idleCurrentA (0.273),
+   m_calculationCurrentA (0.380),
    m_currentState (AodvEnergyModelState::IDLE_),
+   m_lastUpdateTime (Seconds (0.0)),
    m_nPendingChangeState (0)
 {
   NS_LOG_FUNCTION (this);
   m_energyDepletionCallback.Nullify ();
   m_energyRechargedCallback.Nullify ();
-  m_lastUpdateTime = std::chrono::high_resolution_clock::now().time_since_epoch().count();
 }
 
 AodvEnergyModel::~AodvEnergyModel ()
@@ -67,7 +65,8 @@ AodvEnergyModel::GetTotalEnergyConsumption (void) const
 {
   NS_LOG_FUNCTION (this);
 
-  auto duration = std::chrono::high_resolution_clock::now().time_since_epoch().count() - m_lastUpdateTime;
+  Time duration = Simulator::Now () - m_lastUpdateTime;
+  NS_ASSERT (duration.GetNanoSeconds () >= 0); // check if duration is valid
 
   // energy to decrease = current * voltage * time
   double energyToDecrease = 0.0;
@@ -75,12 +74,10 @@ AodvEnergyModel::GetTotalEnergyConsumption (void) const
   switch (m_currentState)
   {
   case AodvEnergyModelState::IDLE_:
-    energyToDecrease = (duration * m_idleCurrentA * supplyVoltage) / 1e7;
-    energyToDecrease = 1.0;
+    energyToDecrease = duration.GetSeconds () * m_idleCurrentA * supplyVoltage;
     break;
   case AodvEnergyModelState::CALCULATING_:
-    energyToDecrease = (duration * m_calculationCurrentA * supplyVoltage) / 1e7;
-    energyToDecrease = 1.0;
+    energyToDecrease = duration.GetSeconds () * m_calculationCurrentA * supplyVoltage;
     break;
   case AodvEnergyModelState::OFF_:
     energyToDecrease = 0;
@@ -88,10 +85,6 @@ AodvEnergyModel::GetTotalEnergyConsumption (void) const
   default:
     NS_FATAL_ERROR ("AodvEnergyModel:Undefined state: " << m_currentState);
   }
-  if (energyToDecrease == 0) {
-    printf("ALERT: Energy to decrease %f\n", energyToDecrease);
-    }
-
 
   // notify energy source
   m_source->UpdateEnergySource ();
@@ -144,7 +137,8 @@ AodvEnergyModel::ChangeState (int newState)
         AodvEnergyModelState::OFF_);
   }
 
-  auto duration = std::chrono::system_clock::now().time_since_epoch().count() - m_lastUpdateTime;
+  Time duration = Simulator::Now () - m_lastUpdateTime;
+  NS_ASSERT (duration.IsPositive ()); // check if duration is valid
 
   // energy to decrease = current * voltage * time
   double energyToDecrease = 0.0;
@@ -152,10 +146,12 @@ AodvEnergyModel::ChangeState (int newState)
   switch (m_currentState)
   {
   case AodvEnergyModelState::IDLE_:
-    energyToDecrease = (duration* m_idleCurrentA * supplyVoltage) / 1e7;
+    energyToDecrease = (duration.GetNanoSeconds () * m_idleCurrentA * supplyVoltage) / 1e9;
+    energyToDecrease = 1.0;
     break;
   case AodvEnergyModelState::CALCULATING_:
-    energyToDecrease = (duration* m_calculationCurrentA * supplyVoltage) / 1e7;
+    energyToDecrease = (duration.GetNanoSeconds () * m_calculationCurrentA * supplyVoltage) / 1e9;
+    energyToDecrease = 1.0;
     break;
   case AodvEnergyModelState::OFF_:
     energyToDecrease = 0.0;
@@ -164,16 +160,12 @@ AodvEnergyModel::ChangeState (int newState)
     NS_FATAL_ERROR ("AodvEnergyModel: undefined radio state " << m_currentState);
   }
 
-  if (energyToDecrease == 0) {
-    printf("ALERT: Energy to decrease %f\n", energyToDecrease);
-  }
-
   // update total energy consumption
   m_totalEnergyConsumption += energyToDecrease;
   NS_ASSERT (m_totalEnergyConsumption <= m_source->GetInitialEnergy ());
 
   // update last update time stamp
-  m_lastUpdateTime = std::chrono::system_clock::now().time_since_epoch().count();
+  m_lastUpdateTime = Simulator::Now ();
 
   // notify energy source
   m_source->UpdateEnergySource ();
@@ -192,21 +184,8 @@ AodvEnergyModel::ChangeState (int newState)
 }
 
 void
-AodvEnergyModel::SetAodvEnergyModelState ( AodvEnergyModelState state)
+AodvEnergyModel::SetAodvEnergyModelState (const AodvEnergyModelState state)
 {
-  if(state == AodvEnergyModelState::CALCULATING_) {
-    statesStack.push(AodvEnergyModelState::CALCULATING_);
-  }
-  else if (state == AodvEnergyModelState::IDLE_) {
-    if(!statesStack.empty()) {
-      statesStack.pop();
-      state = AodvEnergyModelState::CALCULATING_;
-    }
-    else {
-        printf("ALERT: Stack is empty on idle\n");
-      }
-  }
-
   NS_LOG_FUNCTION (this << state);
   m_currentState = state;
   std::string stateName;
