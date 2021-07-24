@@ -39,3 +39,21 @@
 3. Edit src/aodv/wscript to add new files to next building.
 
 Example of usage is in aodv-hello-flood/aodv-hello-flood-2.cc file.
+
+## AODV IPS
+
+### Hello flood prevention
+
+#### Setting up
+
+Use files from directory "fsm-based-ips".
+
+1. Set up AODV routing protocol energy model.
+2. Place files all files to src/aodv/model directory.
+3. Edit src/aodv/wscript to add new files to next building.
+
+#### Running simulation
+
+1. Place aodv-hello-flood/aodv-hello-flood-3 to scratch directory.
+2. ./waf
+3. --run aodv-hello-flood-3
