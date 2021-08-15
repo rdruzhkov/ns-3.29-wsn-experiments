@@ -56,4 +56,4 @@ Use files from directory "fsm-based-ips".
 
 1. Place aodv-hello-flood/aodv-hello-flood-3 to scratch directory.
 2. ./waf
-3. --run aodv-hello-flood-3
+3. ./waf --run aodv-hello-flood-3
