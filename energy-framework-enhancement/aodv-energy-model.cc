@@ -75,23 +75,17 @@ AodvEnergyModel::GetTotalEnergyConsumption (void) const
   switch (m_currentState)
   {
   case AodvEnergyModelState::IDLE_:
-    energyToDecrease = (duration * m_idleCurrentA * supplyVoltage) / 1e7;
-    energyToDecrease = 1.0;
+    energyToDecrease = 0.0;
     break;
   case AodvEnergyModelState::CALCULATING_:
     energyToDecrease = (duration * m_calculationCurrentA * supplyVoltage) / 1e7;
-    energyToDecrease = 1.0;
     break;
   case AodvEnergyModelState::OFF_:
-    energyToDecrease = 0;
+    energyToDecrease = 0.0;
     break;
   default:
     NS_FATAL_ERROR ("AodvEnergyModel:Undefined state: " << m_currentState);
   }
-  if (energyToDecrease == 0) {
-    printf("ALERT: Energy to decrease %f\n", energyToDecrease);
-    }
-
 
   // notify energy source
   m_source->UpdateEnergySource ();
@@ -152,7 +146,7 @@ AodvEnergyModel::ChangeState (int newState)
   switch (m_currentState)
   {
   case AodvEnergyModelState::IDLE_:
-    energyToDecrease = (duration * m_idleCurrentA * supplyVoltage) / 1e7;
+    energyToDecrease = 0.0;
     stateName = "IDLE_";
     break;
   case AodvEnergyModelState::CALCULATING_:
