@@ -1,3 +1,6 @@
+# About
+This repository contains code for implementation of attack and defence mechanisms for AODV routing protocol in ns-3 network simulator.
+
 # Requirements
 - ns-3.29
 
